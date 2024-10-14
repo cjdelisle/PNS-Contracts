@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Admin Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .tab {
+            display: none;
+        }
+        .tab.active {
+            display: block;
+        }
+        .tabs button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .validation-err {
+            color: red;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"
+        integrity="sha512-f+t6//rz3Iy3hp1CiwtsigYtyWuGk7bf6xl2RTOPvmyMIfTQJ4iy6Lg1dah1bsLQ9SLideJGicgmOkBsBXP1aA=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer">
+    </script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+        crossorigin="anonymous">
+    </script>
+    <script src="./pns.js"></script>
+    <script src="./index.js"></script>
+</head>
+<body>        
+    <h1>Smart Contract Admin Panel</h1>
+    <div class="tabs">
+        <button onclick="pns.showTab('admin')">Admin</button>
+        <button onclick="pns.showTab('names')">Names</button>
+        <button onclick="pns.showTab('records')">Records</button>
+        <button onclick="pns.showTab('infra')">Infra</button>
+    </div>
+
+    <!-- Admin Tab -->
+    <div id="admin" class="tab active">
+        <h2>Admin</h2>
+        <h3>PNS Admin</h3>
+    
+        <!-- Owner -->
+        <div>
+            <label>Owner: </label>
+            <input type="text" id="ownerInput" placeholder="Loading..." />
+            <button onclick="pns.admin.getOwner()">Refresh</button>
+            <button onclick="pns.admin.setOwner()">Change Owner</button>
+        </div>
+    
+        <!-- Admin -->
+        <div>
+            <label>Admin: </label>
+            <input type="text" id="adminInput" placeholder="Loading..." />
+            <button onclick="pns.admin.getAdmin()">Refresh</button>
+            <button onclick="pns.admin.setAdmin()">Set Admin</button>
+        </div>
+    
+        <!-- PriceHalvingSeconds -->
+        <div>
+            <label>Price Halving Seconds: </label>
+            <input type="number" id="halvingInput" placeholder="Loading..." />
+            <button onclick="pns.admin.getPriceHalving()">Refresh</button>
+            <button onclick="pns.admin.setPriceHalving()">Set Price Halving Seconds</button>
+        </div>
+    
+        <!-- Registration Whitelist -->
+        <div>
+            <h4>Registration Whitelist</h4>
+            <input type="text" id="whitelistAddress" placeholder="Address" />
+            <br/>
+            <button onclick="pns.admin.checkWhitelist()">Check Status</button>
+            <input type="text" id="whitelistStatus" placeholder="Whitelist Status" readonly />
+            <br />
+            <label>
+                <input type="checkbox" id="addAddress" />
+                Add Address
+            </label>
+            <br/>
+            <label>
+                <input type="checkbox" id="whitelistActive" />
+                Whitelist Active
+            </label>
+            <br/>
+            <button onclick="pns.admin.updateWhitelist()">Update Whitelist</button>
+        </div>        
+    
+        <!-- Blacklisted Domains -->
+        <div>
+            <h4>Blacklisted Domains</h4>
+            <input type="number" id="domainId" placeholder="Domain ID" />
+            <label>Blacklist: </label>
+            <input type="checkbox" id="blacklistDomain" />
+            <button onclick="pns.admin.setBlacklisted()">Update Blacklist</button>
+        </div>
+    </div>    
+
+    <div id="names" class="tab">
+        <h2>Names</h2>
+
+        <!-- Registration Whitelist Check -->
+        <div id="names-not-on-whitelist" style="display:none;">
+            <!-- <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.7); z-index: 1;"></div> -->
+            <h3 style="background: black; color: white; padding: 1em; position: relative; text-align: center;">Names are not available for you yet.</h3>
+        </div>
+
+        <!-- Table of User Names -->
+        <h4>Your Names</h4>
+        <table id="names-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Owner Stake</th>
+                    <th>Status</th>
+                    <th>Subdomains</th>
+                    <th>Records</th>
+                    <th>Manage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6" style="text-align: center;">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    
+        <!-- Register Name Section -->
+        <h4>Register Name</h4>
+        <div>
+            <label for="nameInput">Name:</label>
+            <input type="text" id="nameInput" placeholder="Enter name" />
+            <br />
+    
+            <label for="minimumStake">Minimum Stake Value:</label>
+            <span id="minimumStake">0</span> <!-- Placeholder for the minimum stake value -->
+    
+            <br />
+    
+            <label for="ownerStake">Owner Stake:</label>
+            <select id="ownerStake">
+                <option value="0">Select Stake</option>
+                <option value="1">Stake Option 1</option>
+                <option value="2">Stake Option 2</option>
+                <option value="3">Stake Option 3</option>
+                <!-- Add more options as needed -->
+            </select>
+            <br />
+    
+            <button id="confirmPreRegistrationBtn">Confirm Pre-registration</button>
+        </div>
+    </div>
+        
+    
+    <div id="records" class="tab">
+        <h2>Records</h2>
+    </div>
+
+    <div id="infra" class="tab">
+        <h2>Infra</h2>
+
+        <div>
+            <label>Total Yield Credits: </label>
+            <span id="infra-totalYieldCredits">Loading...</span>
+        </div>
+        
+        <div>
+            <label>Assigned Yield Credits: </label>
+            <span id="infra-assignedYieldCredits">Loading...</span>
+        </div>
+    
+        <div>
+            <label>Cjdns Daily Yield per Million Credits: </label>
+            <span id="infra-cjdnsDailyYield">Loading...</span>
+        </div>
+    
+        <div>
+            <label>Domain Daily Yield per Million Credits: </label>
+            <span id="infra-domainDailyYield">Loading...</span>
+        </div>
+    
+        <h4>Infrastructure Details</h4>
+    
+        <table id="infra-table" border="1">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Assigned Credits</th>
+                    <th>Assigned Credits (USD)</th>
+                    <th>OK</th>
+                    <th>Week Uptime</th>
+                    <th>Bonus</th>
+                    <th>Penalty</th>
+                    <th>Daily Yield</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="10">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <br/>
+        <button id="infra-registerCjdnsNodeButton">Register New Cjdns</button>
+
+        <div id="infra-registerCjdnsNode" class="hidden">
+            <h4>Register New Cjdns Node</h4>
+        
+            <div>
+                <label for="infra-nodeName">Name: </label>
+                <input type="text" id="infra-nodeName" />
+                <span class="validation-err" id="infra-nodeName-validationErr"></span>
+            </div>
+
+            <div>
+                <label for="infra-nodeDomain">Domain:</label>
+                <select id="infra-nodeDomain">
+                    <option value="0">Loading</option>
+                </select>
+            </div>
+        
+            <div>
+                <label for="infra-enableVPN">Enable VPN: </label>
+                <input type="checkbox" id="infra-enableVPN" />
+            </div>
+
+            <div>
+                <label for="infra-privateCjdns">Private Node (non-yielding): </label>
+                <input type="checkbox" id="infra-privateCjdns" />
+            </div>
+        
+            <div>
+                <label for="infra-cjdnsYieldCredits">Assigned Yield Credits: </label>
+                <input type="text" id="infra-cjdnsYieldCredits" />
+                <button id="infra-maxCreditsButton">Max Possible</button>
+                <span id="infra-dollarizedValue">Dollarized value: $0.00</span>
+                <span class="validation-err" id="infra-cjdnsYieldCredits-validationErr"></span>
+            </div>
+        
+            <div>
+                <button id="infra-registerCjdnsButton">Register Cjdns</button>
+            </div>
+        </div>        
+
+    </div>
+</body>
+</html>

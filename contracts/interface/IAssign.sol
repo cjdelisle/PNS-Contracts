@@ -41,4 +41,13 @@ interface IAssign {
         string calldata name,
         uint yieldCredits
     ) external;
+
+    /// @return The next higher Assign id to issue
+    function nextId() external view returns (uint);
+
+    /// Access the free list of unit IDs.
+    ///
+    /// @param last The last ID, if zero then this gives the list head
+    /// @return id The next ID in the list
+    function idFreeList(uint64 last) external view returns (uint id);
 }

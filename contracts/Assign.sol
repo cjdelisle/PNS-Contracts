@@ -105,4 +105,12 @@ contract Assign is IAssign {
         self_infra.updateUnit(unitId, update, t, parentDomain, name, msg.sender);
         assignYc(unitId, yieldCredits);
     }
+
+    function nextId() external override view returns (uint) {
+        return self_ids.nextId;
+    }
+
+    function idFreeList(uint64 last) external override view returns (uint) {
+        return self_ids.freeList[last];
+    }
 }
