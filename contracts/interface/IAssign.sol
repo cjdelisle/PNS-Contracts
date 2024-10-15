@@ -11,7 +11,7 @@ interface IAssign {
         uint unitId;
     }
 
-    event Assign(address owner, uint unitId, uint256 yieldCredits);
+    event Assign(uint id, address owner, uint unitId, uint256 yieldCredits);
 
     function assignByOwnerUnit(address owner, uint unitId) external view returns (uint);
 

@@ -48,12 +48,12 @@ contract Assign is IAssign {
             if (yieldCredits == 0) {
                 return;
             }
-            uint id = self_ids.take();
-            Assignment storage ass = self_assignments[id];
+            aid = self_ids.take();
+            Assignment storage ass = self_assignments[aid];
             ass.owner = msg.sender;
             ass.unitId = unitId;
             ass.yieldCredits = yieldCredits;
-            self_assignmentIdByOwnerUnit[abi.encode(msg.sender, unitId)] = id;
+            self_assignmentIdByOwnerUnit[abi.encode(msg.sender, unitId)] = aid;
         } else if (yieldCredits == 0) {
             delete self_assignmentIdByOwnerUnit[abi.encode(msg.sender, unitId)];
             delete self_assignments[aid];
@@ -61,7 +61,7 @@ contract Assign is IAssign {
         } else {
             self_assignments[aid].yieldCredits = yieldCredits;
         }
-        emit Assign(msg.sender, unitId, yieldCredits);
+        emit Assign(aid, msg.sender, unitId, yieldCredits);
     }
 
     function getAssign(uint id) external override view returns (

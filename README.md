@@ -7,7 +7,7 @@ Each contract is documented in it's own interface file.
 ## Currently deployed
 * PNS: https://basescan.org/address/0xDd0c3FE1a3cac20209e808FB2dB61D15ABB5b6dD#code
 * Infra: https://basescan.org/address/0xFDc0c296A6DafBA5D43af49ffC08741d197B7485#code
-* Assign: https://basescan.org/address/0x17209092f8a0091587263c1aDe63F02c92E675F7#code
+* Assign: https://basescan.org/address/0xd8cEDc7550da84E2CaDa058802e71aB041d67651#code
 
 Try running some of the following tasks:
 
