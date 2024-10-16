@@ -25,6 +25,19 @@
         .hidden {
             display: none;
         }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #000;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            /* display: inline-block; */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"
         integrity="sha512-f+t6//rz3Iy3hp1CiwtsigYtyWuGk7bf6xl2RTOPvmyMIfTQJ4iy6Lg1dah1bsLQ9SLideJGicgmOkBsBXP1aA=="
@@ -46,6 +59,8 @@
         <button onclick="pns.showTab('records')">Records</button>
         <button onclick="pns.showTab('infra')">Infra</button>
     </div>
+    
+    <div id="spinner" class="spinner hidden"></div>
 
     <!-- Admin Tab -->
     <div id="admin" class="tab active">
@@ -104,6 +119,15 @@
             <label>Blacklist: </label>
             <input type="checkbox" id="blacklistDomain" />
             <button onclick="pns.admin.setBlacklisted()">Update Blacklist</button>
+        </div>
+
+        <div>
+            <h4>Infra Trusted Contracts</h4>
+            <label>Contract: </label>
+            <input id="admin-trustContract" />
+            <label for="infra-trustContractTrust">Set Trusted: </label>
+            <input type="checkbox" id="infra-trustContractTrust" />
+            <button id="admin-clickTrustContract">Trust Contract</button>
         </div>
     </div>    
 
@@ -205,6 +229,7 @@
                     <th>Bonus</th>
                     <th>Penalty</th>
                     <th>Daily Yield</th>
+                    <th>Edit</th>
                 </tr>
             </thead>
             <tbody>
@@ -215,7 +240,7 @@
         </table>
 
         <br/>
-        <button id="infra-registerCjdnsNodeButton">Register New Cjdns</button>
+        <button id="infra-registerCjdnsNodeButton">New Cjdns</button>
 
         <div id="infra-registerCjdnsNode" class="hidden">
             <h4>Register New Cjdns Node</h4>
@@ -245,7 +270,7 @@
         
             <div>
                 <label for="infra-cjdnsYieldCredits">Assigned Yield Credits: </label>
-                <input type="text" id="infra-cjdnsYieldCredits" />
+                <input type="text" id="infra-cjdnsYieldCredits" placeholder="0.00" />
                 <button id="infra-maxCreditsButton">Max Possible</button>
                 <span id="infra-dollarizedValue">Dollarized value: $0.00</span>
                 <span class="validation-err" id="infra-cjdnsYieldCredits-validationErr"></span>
@@ -254,7 +279,48 @@
             <div>
                 <button id="infra-registerCjdnsButton">Register Cjdns</button>
             </div>
-        </div>        
+        </div>
+
+        <br/>
+        <div id="infra-updateCjdnsNode" class="hidden">
+            <h4>Modify Cjdns Node <span id="infra-updateCjdnsNodeId"></span></h4>
+        
+            <div>
+                <label for="infra-updNodeName">Name: </label>
+                <input type="text" id="infra-updNodeName" />
+                <span class="validation-err" id="infra-updNodeName-validationErr"></span>
+            </div>
+
+            <div>
+                <label for="infra-updNodeDomain">Domain:</label>
+                <select id="infra-updNodeDomain">
+                    <option value="0">Loading</option>
+                </select>
+            </div>
+        
+            <div>
+                <label for="infra-updEnableVPN">Enable VPN: </label>
+                <input type="checkbox" id="infra-updEnableVPN" />
+            </div>
+
+            <div>
+                <label for="infra-updPrivateCjdns">Private Node (non-yielding): </label>
+                <input type="checkbox" id="infra-updPrivateCjdns" />
+            </div>
+        
+            <div>
+                <label for="infra-updCjdnsYieldCredits">Assigned Yield Credits: </label>
+                <input type="text" id="infra-updCjdnsYieldCredits" placeholder="0.00"/>
+                <button id="infra-updMaxCreditsButton">Max Possible</button>
+                <span id="infra-updDollarizedValue">Dollarized value: $0.00</span>
+                <span class="validation-err" id="infra-updCjdnsYieldCredits-validationErr"></span>
+            </div>
+        
+            <div>
+                <button id="infra-updateCjdnsButton">Save</button>
+            </div>
+        </div>
+
 
     </div>
 </body>
