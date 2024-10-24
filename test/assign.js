@@ -2,6 +2,7 @@ const {
   time,
   loadFixture,
 } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
+const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 const { deployContracts } = require('./helpers/deploy');
 
@@ -23,7 +24,7 @@ describe("Assign", function () {
       
       await expect(assign.assignYc(unitId, yieldCredits))
         .to.emit(assign, "Assign")
-        .withArgs(owner.address, unitId, yieldCredits);
+        .withArgs(1, owner.address, unitId, yieldCredits, anyValue, 10n**30n);
       
       const assignment = await assign.getAssign(1);
       expect(assignment.owner).to.equal(owner.address);

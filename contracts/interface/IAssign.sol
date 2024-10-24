@@ -5,13 +5,30 @@ pragma solidity ^0.8.24;
 import "./IInfra.sol";
 
 interface IAssign {
+    /// The Assignment structure that is used internally.
     struct Assignment {
-        address owner;
+        /// Number of yield credits assigned
         uint yieldCredits;
+        /// The unit that the credits are assigned to
         uint unitId;
+        /// Who assigned the credits
+        address owner;
+        /// The timestamp when the assignment was created or updated
+        uint64 timestamp;
+        /// The USD value of 1 credit at the time the assignment was created/updated (per the PriceOracle)
+        uint valueUsd;
     }
 
-    event Assign(uint id, address owner, uint unitId, uint256 yieldCredits);
+    /// An assignment has been created/updated/deleted
+    ///
+    /// @param id The ID of the assignment
+    /// @param owner Who created the assignment
+    /// @param unitId The unit that the credits were assigned to
+    /// @param yieldCredits The number of credits that were assigned, 0 means deleted.
+    /// @param timestamp The block timestamp when the assignment was created/updated
+    /// @param valueUsd The value of 1 credit at the time of the assignment
+    event Assign(uint id, address owner, uint unitId, uint256 yieldCredits, uint64 timestamp, uint valueUsd);
+
 
     function assignByOwnerUnit(address owner, uint unitId) external view returns (uint);
 
@@ -20,7 +37,9 @@ interface IAssign {
     function getAssign(uint id) external view returns (
         address owner,
         uint256 yieldCredits,
-        uint unitId
+        uint unitId,
+        uint64 timestamp,
+        uint valueUsd
     );
 
     function getAssigns(uint[] calldata ids) external view returns (Assignment[] memory out);

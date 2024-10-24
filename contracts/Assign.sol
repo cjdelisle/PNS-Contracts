@@ -2,11 +2,14 @@
 
 pragma solidity ^0.8.24;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "./interface/IInfra.sol";
 import "./interface/IAssign.sol";
+import "./interface/IPriceOracle.sol";
 import "./libraries/IdProvider.sol";
 
-contract Assign is IAssign {
+contract Assign is IAssign, Ownable {
     using IdProvider for IdProvider.Ids;
 
     /**
@@ -30,11 +33,17 @@ contract Assign is IAssign {
     mapping(bytes => uint) self_assignmentIdByOwnerUnit;
 
     /**
+     * @dev The source of price of the asset.
+     */
+    IPriceOracle private self_priceOracle;
+
+    /**
      * @param infra The infra contract
      */
-    constructor(address infra) {
+    constructor(address infra, address priceOracle) Ownable(msg.sender) {
         self_infra = IInfra(infra);
         self_ids.init();
+        self_priceOracle = IPriceOracle(priceOracle);
     }
 
     function assignByOwnerUnit(address owner, uint unitId) public override view returns (uint) {
@@ -44,6 +53,7 @@ contract Assign is IAssign {
     function assignYc(uint unitId, uint256 yieldCredits) public override
     {
         uint aid = assignByOwnerUnit(msg.sender, unitId);
+        uint valueUsd = self_priceOracle.getUpdatePriceUsd();
         if (aid == 0) {
             if (yieldCredits == 0) {
                 return;
@@ -53,26 +63,35 @@ contract Assign is IAssign {
             ass.owner = msg.sender;
             ass.unitId = unitId;
             ass.yieldCredits = yieldCredits;
+            ass.valueUsd = valueUsd;
+            ass.timestamp = uint64(block.timestamp);
             self_assignmentIdByOwnerUnit[abi.encode(msg.sender, unitId)] = aid;
         } else if (yieldCredits == 0) {
             delete self_assignmentIdByOwnerUnit[abi.encode(msg.sender, unitId)];
             delete self_assignments[aid];
             self_ids.release(aid);
         } else {
-            self_assignments[aid].yieldCredits = yieldCredits;
+            Assignment storage ass = self_assignments[aid];
+            ass.yieldCredits = yieldCredits;
+            ass.valueUsd = valueUsd;
+            ass.timestamp = uint64(block.timestamp);
         }
-        emit Assign(aid, msg.sender, unitId, yieldCredits);
+        emit Assign(aid, msg.sender, unitId, yieldCredits, uint64(block.timestamp), valueUsd);
     }
 
     function getAssign(uint id) external override view returns (
         address owner,
         uint256 yieldCredits,
-        uint unitId
+        uint unitId,
+        uint64 timestamp,
+        uint valueUsd
     ) {
         Assignment memory ass = self_assignments[id];
         owner = ass.owner;
         yieldCredits = ass.yieldCredits;
         unitId = ass.unitId;
+        timestamp = ass.timestamp;
+        valueUsd = ass.valueUsd;
     }
 
     function getAssigns(uint[] calldata ids) external override view returns (Assignment[] memory out) {
@@ -112,5 +131,9 @@ contract Assign is IAssign {
 
     function idFreeList(uint64 last) external override view returns (uint) {
         return self_ids.freeList[last];
+    }
+
+    function setPriceOracle(address priceOracle) external onlyOwner {
+        self_priceOracle = IPriceOracle(priceOracle);
     }
 }

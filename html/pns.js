@@ -43,6 +43,48 @@ type DataProvider_t = {
   availableYc: () => bigint,
 };
 
+type RespCjdnsBonus_t = {
+  ip_block: string,
+  ip_block_nodes: number,
+  ip_block_bonus: number,
+  asn: string,
+  asn_nodes: number,
+  asn_bonus: number,
+  ipv6_bonus: number,
+  total_bonus: number,
+};
+type RespCjdnsSim_t = {
+  bonus: RespCjdnsBonus_t,
+  applicable_yield_credits: string,
+  dollarized_yield_credits: string,
+  effective_yield_credits: string,
+  daily_yield: string,
+  daily_yield_dollarized: string,
+};
+type InfraCjdnsStatusOperational_t = {
+  ipv4: string,
+  bonus: RespCjdnsBonus_t,
+  uptime: number,
+  downtime_penalty: number,
+  effective_yield_credits: string, // Assuming U256 is a big integer or hexadecimal string
+  daily_yield: string,
+  daily_yield_dollarized: string,
+};
+type InfraCjdnsStatus_t = {
+  name: string,
+  domain: string,
+  vpn: boolean,
+  private: boolean,
+  assigned_yield_credits: string, // Assuming U256 is a big integer or hexadecimal string
+  dollarized_yield_credits: string,
+  node_status: string,
+  peer_id: string,
+  operational_status: ?InfraCjdnsStatusOperational_t, // Optional field
+};
+
+
+/// --- ///
+
 export type Admin_t = {
     owner: Var_t<string>,
     admin: Var_t<string>,
@@ -73,6 +115,31 @@ export type UnitTableEnt_t = {
     penalty: number|null,
     dailyYield: string,
 };
+export type DomainUpdateOrCreate_t = {|
+    tldOptions: Var_t<string[]>,
+    createButtonActive: Var_t<boolean>,
+    domain: Var_t<string>,
+    resolveDangerous: Var_t<boolean>,
+    yieldCreditsValidation: Var_t<string>,
+    yieldCreditsDollarized: Var_t<string>,
+    yieldCredits: Var_t<number>,
+    clickMaxCreditsButton: () => Promise<void>,
+    createOrUpdate: () => Promise<?void>,
+    setNodeId: (?string) => Promise<void>,
+|};
+export type CjdnsSim_t = {|
+    ipv4Address: Var_t<string>,
+    hasIpv6: Var_t<boolean>,
+    ipv4AddressValidationError: Var_t<string>,
+    addressBlockNodes: Var_t<string>,
+    addressBlockBonus: Var_t<string>,
+    addressBlockNetwork: Var_t<string>,
+    ispNetwork: Var_t<string>,
+    ispNodes: Var_t<string>,
+    ispBonus: Var_t<string>,
+    ipv6Bonus: Var_t<string>,
+    totalBonus: Var_t<string>,
+|};
 export type CjdnsUpdateOrCreate_t = {|
     domainOptions: Var_t<{[string]:string}>,
     createButtonActive: Var_t<boolean>,
@@ -86,7 +153,7 @@ export type CjdnsUpdateOrCreate_t = {|
     enableVPN: Var_t<boolean>,
     privateNode: Var_t<boolean>,
     createOrUpdate: () => Promise<void|null>,
-    setNodeId: (string) => Promise<void>,
+    setNodeId: (?string) => Promise<void>,
 |};
 export type Infra_t = {|
     assignedYc: Var_t<string>,
@@ -95,6 +162,8 @@ export type Infra_t = {|
     domainDailyPerMillion: Var_t<string>,
     unitTable: Var_t<UnitTableEnt_t[]>,
     createUpdateCjdns: () => Promise<CjdnsUpdateOrCreate_t>,
+    createUpdateDomain: () => Promise<DomainUpdateOrCreate_t>,
+    infraCjdnsSim: () => Promise<CjdnsSim_t>,
 |};
 export type Pns_t = {|
     setErrorHandler: ((Error)=>void)=>void,
@@ -280,17 +349,78 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
         };
     };
 
+    const yieldCredits = async (
+        name /*:string*/,
+        dataProv /*:DataProvider_t*/,
+        createButtonActive /*:Var_t<boolean>*/,
+        limit /*:?bigint*/,
+        limitDollars /*:?string*/
+    ) => {
+        let assignedYieldCredits /*:bigint|null*/ = 0n;
+        let yieldCreditsOk = true;
+        const yieldCreditsValidation = await mkVar(name + ".yieldCreditsValidation", async () => {
+            let msg = '';
+            yieldCreditsOk = false;
+            if (assignedYieldCredits === null) {
+                msg = "Invalid number.";
+            } else if (assignedYieldCredits > 0n && assignedYieldCredits > dataProv.availableYc()) {
+                msg = "You don't have enough yield credits to assign.";
+            } else if (assignedYieldCredits && limit && assignedYieldCredits > limit) {
+                msg = `Only $${limitDollars || 'UNDEFINED'} of Yield Credits are allowed.`;
+            } else {
+                yieldCreditsOk = true;
+            }
+            return msg;
+        }, [createButtonActive]);
+        const yieldCreditsDollarized = await mkVar(name + ".yieldCreditsDollarized", async () => {
+            if (assignedYieldCredits === null) {
+                return "-";
+            }
+            return renderPKT(assignedYieldCredits * 10n**18n * 5000n / BigInt(dataProv.get().five_thousand_usd_yc));
+        });
+        const yieldCredits = await mkVar(name + ".yieldCredits", async (yc) => {
+            if (typeof(yc) === 'string') { yc = yc.replace(/,/g, ''); }
+            const n = Number(yc || 0);
+            if (isNaN(n)) {
+                console.log('yc set to null because yc is', yc);
+                assignedYieldCredits = null;
+            } else {
+                assignedYieldCredits = BigInt(Math.floor(n * 10**18));
+            }
+            if (assignedYieldCredits !== null && assignedYieldCredits > 0n) {
+                return Number(assignedYieldCredits) / 10**18;
+            } else {
+                return 0;
+            }
+        }, [yieldCreditsDollarized, yieldCreditsValidation, createButtonActive]);
+        const clickMaxCreditsButton = async () => {
+            let amt = dataProv.availableYc();
+            if (limit && limit < amt) {
+                amt = limit;
+            }
+            await yieldCredits.updateAndSet(Number(amt) / 10**18);
+        };
+        return Object.freeze({
+            get: () => assignedYieldCredits,
+            isOk: () => yieldCreditsOk,
+            yieldCreditsValidation,
+            yieldCreditsDollarized,
+            yieldCredits,
+            clickMaxCreditsButton,
+        });
+    };
+
     const infraCreateCjdns = async (
         dataProv /*:DataProvider_t*/,
     ) /*:Promise<CjdnsUpdateOrCreate_t>*/ => {
         let nodeName = '';
         let nodeNameOk = true;
-        let yieldCreditsOk = true;
         let nodeId /*:?string*/ = null;
         let isDefault = () => true;
+        let yieldCreditsOk = () => true;
 
         const createButtonActive = await mkVar("infra.createCjdns.createButtonActive", async () => {
-            return !isDefault() && nodeNameOk && yieldCreditsOk;
+            return !isDefault() && nodeNameOk && yieldCreditsOk();
         });
 
         const nodeNameValidation = await mkVar("infra.createCjdns.nodeNameValidation", async () => {
@@ -305,7 +435,14 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
         const enableVPN = await mkVar("infra.createCjdns.enableVPN", withDefault(false), [createButtonActive]);
         const privateNode = await mkVar("infra.createCjdns.privateNode", withDefault(false), [createButtonActive]);
 
-        let assignedYieldCredits /*:bigint|null*/ = 0n;
+        const yc = await yieldCredits(
+            'infra.createCjdns',
+            dataProv,
+            createButtonActive,
+            BigInt(dataProv.get().five_thousand_usd_yc),
+            "5,000"
+        );
+        yieldCreditsOk = yc.isOk;
 
         const getType = () => {
             if (enableVPN.get()) {
@@ -330,78 +467,49 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
             } /*:{[string]:string}*/);
         });
 
-        const yieldCreditsValidation = await mkVar("infra.createCjdns.yieldCreditsValidation", async () => {
-            let msg = '';
-            yieldCreditsOk = false;
-            if (assignedYieldCredits === null) {
-                msg = "Invalid number.";
-            } else if (assignedYieldCredits > 0n && assignedYieldCredits > dataProv.availableYc()) {
-                msg = "You don't have enough yield credits to assign.";
-            } else if (assignedYieldCredits && assignedYieldCredits > BigInt(dataProv.get().five_thousand_usd_yc)) {
-                msg = "Only $5,000 of Yield Credits are allowed.";
-            } else {
-                yieldCreditsOk = true;
-            }
-            return msg;
-        }, [createButtonActive]);
-        const yieldCreditsDollarized = await mkVar("infra.createCjdns.yieldCreditsDollarized", async () => {
-            if (assignedYieldCredits === null) {
-                return "-";
-            }
-            return renderPKT(assignedYieldCredits * 10n**18n * 5000n / BigInt(dataProv.get().five_thousand_usd_yc));
-        });
-        const yieldCredits = await mkVar("infra.createCjdns.yieldCredits", async (yc) => {
-            if (typeof(yc) === 'string') { yc = yc.replace(/,/g, ''); }
-            const n = Number(yc || 0);
-            if (isNaN(n)) {
-                console.log('yc set to null because yc is', yc);
-                assignedYieldCredits = null;
-            } else {
-                assignedYieldCredits = BigInt(Math.floor(n * 10**18));
-            }
-            if (assignedYieldCredits !== null && assignedYieldCredits > 0n) {
-                return Number(assignedYieldCredits) / 10**18;
-            } else {
-                return 0;
-            }
-        }, [yieldCreditsDollarized, yieldCreditsValidation, createButtonActive]);
-
         isDefault = () => {
             if (!nodeId) {
             } else if (!name.isDefault()) {
             } else if (!domain.isDefault()) {
             } else if (!enableVPN.isDefault()) {
             } else if (!privateNode.isDefault()) {
-            } else if (!yieldCredits.isDefault()) {
+            } else if (!yc.yieldCredits.isDefault()) {
             } else {
                 return true;
             }
             return false;
         };
 
-        const clickMaxCreditsButton = async () => {
-            const max = BigInt(dataProv.get().five_thousand_usd_yc)
-            const available = dataProv.availableYc();
-            const amt = (max > available) ? available : max;
-            await yieldCredits.updateAndSet(Number(amt) / 10**18);
-        };
-
-        const setNodeId = async (id /*:string*/) => {
+        const setNodeId = async (id /*:?string*/) => {
             nodeId = id;
-            const data = dataProv.get();
-            const unit = data.units.find((u)=>u.id === nodeId);
-            if (!unit) { return; }
-            await name.updateAndSet(unit.name + '');
-            await domain.updateAndSet('0x0') // TODO
-            await enableVPN.updateAndSet(unit.t.indexOf('Vpn') > -1);
-            await privateNode.updateAndSet(unit.t === 'Vpn' || unit.t === 'Private Cjdns');
-            await yieldCredits.updateAndSet(Number(unit.assigned_credits) / 10**18);
-            name.makeDefault();
-            domain.makeDefault();
-            enableVPN.makeDefault();
-            privateNode.makeDefault();
-            yieldCredits.makeDefault();
-            createButtonActive.updateAndSet();
+            if (id) {
+                const data = dataProv.get();
+                const unit = data.units.find((u)=>u.id === nodeId);
+                if (!unit) { return; }
+                await name.updateAndSet(unit.name + '');
+                await domain.updateAndSet('0x0') // TODO
+                await enableVPN.updateAndSet(unit.t.indexOf('Vpn') > -1);
+                await privateNode.updateAndSet(unit.t === 'Vpn' || unit.t === 'Private Cjdns');
+                await yc.yieldCredits.updateAndSet(Number(unit.assigned_credits) / 10**18);
+                name.makeDefault();
+                domain.makeDefault();
+                enableVPN.makeDefault();
+                privateNode.makeDefault();
+                yc.yieldCredits.makeDefault();
+                createButtonActive.updateAndSet();
+            } else {
+                await name.updateAndSet('');
+                await domain.updateAndSet('0x0') // TODO
+                await enableVPN.updateAndSet(false);
+                await privateNode.updateAndSet(false);
+                await yc.yieldCredits.updateAndSet(0);
+                name.makeDefault();
+                domain.makeDefault();
+                enableVPN.makeDefault();
+                privateNode.makeDefault();
+                yc.yieldCredits.makeDefault();
+                createButtonActive.updateAndSet();
+            }
         };
 
         const createOrUpdate = errorHandled('infra.cjdns.createOrUpdate', async () => {
@@ -413,14 +521,14 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
                     getType(),
                     domain.get(),
                     name.get(),
-                    '0x' + (assignedYieldCredits || 0n).toString(16)
+                    '0x' + (yc.get() || 0n).toString(16)
                 );
             } else {
                 tx = await self_assignContract.registerAndAssign(
                     getType(),
                     domain.get(),
                     name.get(),
-                    '0x' + (assignedYieldCredits || 0n).toString(16),
+                    '0x' + (yc.get() || 0n).toString(16),
                     self_myAddress,
                 );
             }
@@ -436,17 +544,185 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
             domainOptions,
             createButtonActive,
             nodeNameValidation,
-            yieldCreditsValidation,
-            yieldCreditsDollarized,
-            yieldCredits,
+            yieldCreditsValidation: yc.yieldCreditsValidation,
+            yieldCreditsDollarized: yc.yieldCreditsDollarized,
+            yieldCredits: yc.yieldCredits,
+            clickMaxCreditsButton: yc.clickMaxCreditsButton,
             name,
             domain,
-            clickMaxCreditsButton,
             enableVPN,
             privateNode,
             createOrUpdate,
             setNodeId,
         })
+    };
+
+    const infraCreateDomain = async (
+        dataProv /*:DataProvider_t*/,
+    ) /*:Promise<DomainUpdateOrCreate_t>*/ => {
+        let domainSet = () => false;
+        let nodeId /*:?string*/ = null;
+        let isDefault = () => true;
+        let yieldCreditsOk = () => true;        
+
+        const tldOptions = await mkVar("infra.createCjdns.domainOptions", async () => {
+            // TODO: Get all domain names
+            return ["com","org","net"];
+        });
+
+        const createButtonActive = await mkVar("infra.createDomain.createButtonActive", async () => {
+            return (!nodeId || !isDefault()) && (nodeId || domainSet()) && yieldCreditsOk();
+        });
+        const domain = await mkVar("infra.createDomain.domain", withDefault(''), [createButtonActive]);
+        domainSet = () => domain.get() !== '';
+        const resolveDangerous = await mkVar("infra.createDomain.resolveDangerous",
+                withDefault(false), [createButtonActive]);
+        const yc = await yieldCredits('infra.createDomain', dataProv, createButtonActive);
+        yieldCreditsOk = yc.isOk;
+
+        setInterval(() => {
+            console.log(domainSet(), domain.get());
+        }, 1000);
+
+        const createOrUpdate = errorHandled('infra.createDomain.createOrUpdate', async () => {
+            let tx;
+            // DomainDangerous = 6
+            // Domain = 5
+            const t = resolveDangerous.get() ? 6 : 5;
+            if (nodeId) {
+                tx = await self_assignContract.updateAndAssign(
+                    nodeId,
+                    0b111,
+                    t,
+                    '0x0',
+                    domain.get(),
+                    '0x' + (yc.get() || 0n).toString(16)
+                );
+            } else {
+                console.log('self_assignContract.registerAndAssign(',
+                    t,
+                    '0x0',
+                    domain.get(),
+                    '0x' + (yc.get() || 0n).toString(16),
+                    self_myAddress,
+                ')');
+                tx = await self_assignContract.registerAndAssign(
+                    t,
+                    '0x0',
+                    domain.get(),
+                    '0x' + (yc.get() || 0n).toString(16),
+                    self_myAddress,
+                );
+            }
+            const txr = await tx.wait();
+            const waitReq = await fetch(API_SERVER + '/wait/' + txr.hash);
+            const waitRes = await waitReq.json();
+            console.log(waitRes);
+            await dataProv.update();
+            self_txidHandler(txr.hash);
+        });
+
+        const setNodeId = async (n /*:?string*/) => {
+            nodeId = n;
+            await createButtonActive.updateAndSet();
+        };
+
+        return Object.freeze({
+            tldOptions,
+            createButtonActive,
+            domain,
+            resolveDangerous,
+            yieldCreditsValidation: yc.yieldCreditsValidation,
+            yieldCreditsDollarized: yc.yieldCreditsDollarized,
+            yieldCredits: yc.yieldCredits,
+            clickMaxCreditsButton: yc.clickMaxCreditsButton,
+            createOrUpdate,
+            setNodeId,
+        });
+    };
+
+    const isValidIpv4 = (ipv4 /*:string*/) /*:boolean*/ => {
+        const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        return ipv4Regex.test(ipv4);
+    };
+
+    const percent = (num /*:number*/) /*:string*/ => `${Math.floor(num * 100)}%`;
+
+    const infraCjdnsSim = async () /*:Promise<CjdnsSim_t>*/ => {
+        const ipv4Address = await mkVar("infra.cjdnsSim.ipv4Address", withDefault(''));
+        const hasIpv6 = await mkVar("infra.cjdnsSim.hasIpv6", withDefault(false));
+        const ipv4AddressValidationError = await mkVar("infra.cjdnsSim.ipv4AddressValidationError", withDefault(''));
+        
+        const addressBlockNodes = await mkVar("infra.cjdnsSim.addressBlockNodes", withDefault('-'));
+        const addressBlockBonus = await mkVar("infra.cjdnsSim.addressBlockBonus", withDefault('-'));
+        const addressBlockNetwork = await mkVar("infra.cjdnsSim.addressBlockNetwork", withDefault('-'));
+        
+        const ispNetwork = await mkVar("infra.cjdnsSim.ispNetwork", withDefault('-'));
+        const ispNodes = await mkVar("infra.cjdnsSim.ispNodes", withDefault('-'));
+        const ispBonus = await mkVar("infra.cjdnsSim.ispBonus", withDefault('-'));
+        
+        const ipv6Bonus = await mkVar("infra.cjdnsSim.ipv6Bonus", withDefault('-'));
+        
+        const totalBonus = await mkVar("infra.cjdnsSim.totalBonus", withDefault('-'));
+
+        let v4 = '';
+        let hasV6 = false;
+        const cycle /*:(?boolean)=>void*/ = (execute) => {
+            if (ipv4Address.get() === v4 && hasIpv6.get() === hasV6) {
+                return void setTimeout(cycle, 100);
+            }
+            if (!isValidIpv4(ipv4Address.get())) {
+                addressBlockNodes.updateAndSet('-');
+                addressBlockBonus.updateAndSet('-');
+                addressBlockNetwork.updateAndSet('-');
+                ispNetwork.updateAndSet('-');
+                ispNodes.updateAndSet('-');
+                ispBonus.updateAndSet('-');
+                ipv6Bonus.updateAndSet('-');
+                totalBonus.updateAndSet('-');
+                ipv4AddressValidationError.updateAndSet('Must be a valid ipv4 address such as 1.2.3.4');
+                return void setTimeout(cycle, 100);
+            }
+            ipv4AddressValidationError.updateAndSet('');
+            if (execute) {
+                const lv4 = ipv4Address.get();
+                const lv6 = hasIpv6.get();
+                errorHandled('infra.cjdnsSim.fetch', async () => {
+                    const r = await fetch(`${API_SERVER}/infra/cjdns/yield-sim/${lv4}/${lv6.toString()}/0x0`);
+                    const resp /*:RespCjdnsSim_t*/ = await r.json();
+                    console.log(JSON.stringify(resp, null, '\t'));
+                    v4 = lv4;
+                    hasV6 = lv6;
+                    addressBlockNodes.updateAndSet(resp.bonus.ip_block_nodes.toString());
+                    addressBlockBonus.updateAndSet(percent(resp.bonus.ip_block_bonus));
+                    addressBlockNetwork.updateAndSet(resp.bonus.ip_block);
+                    ispNetwork.updateAndSet(resp.bonus.asn);
+                    ispNodes.updateAndSet(resp.bonus.asn_nodes.toString());
+                    ispBonus.updateAndSet(percent(resp.bonus.asn_bonus));
+                    ipv6Bonus.updateAndSet(resp.bonus.ipv6_bonus ? percent(resp.bonus.ipv6_bonus) : '-');
+                    totalBonus.updateAndSet((resp.bonus.total_bonus > 0 ? '+' : '') + percent(resp.bonus.total_bonus));
+                    cycle();
+                })();
+            } else {
+                totalBonus.updateAndSet('Loading...');
+                setTimeout(() => cycle(true), 3000);
+            }
+        };
+        cycle();
+
+        return {
+            ipv4Address,                // Var_t<string>
+            hasIpv6,                    // Var_t<boolean>
+            ipv4AddressValidationError,  // Var_t<string>
+            addressBlockNodes,           // Var_t<string>
+            addressBlockBonus,           // Var_t<string>
+            addressBlockNetwork,         // Var_t<string>
+            ispNetwork,                  // Var_t<string>
+            ispNodes,                    // Var_t<string>
+            ispBonus,                    // Var_t<string>
+            ipv6Bonus,                   // Var_t<string>
+            totalBonus                   // Var_t<string>
+        };        
     };
 
     const infra = async () /*:Promise<Infra_t>*/ => {
@@ -486,7 +762,7 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
             }))
         );
 
-        const dataStr/*:DataProvider_t*/ = Object.freeze({
+        const dataProv/*:DataProvider_t*/ = Object.freeze({
             get: () => data,
             update: async () => {
                 await updateData();
@@ -506,7 +782,9 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
             cjdnsDailyPerMillion,
             domainDailyPerMillion,
             unitTable,
-            createUpdateCjdns: async () => await infraCreateCjdns(dataStr),
+            createUpdateCjdns: async () => await infraCreateCjdns(dataProv),
+            createUpdateDomain: async () => await infraCreateDomain(dataProv),
+            infraCjdnsSim: async () => await infraCjdnsSim(),
         });
     };
     

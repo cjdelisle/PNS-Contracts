@@ -242,8 +242,8 @@
         <br/>
         <button id="infra-registerCjdnsNodeButton">New Cjdns</button>
 
-        <div id="infra-registerCjdnsNode" class="hidden">
-            <h4>Register New Cjdns Node</h4>
+        <div id="infra-registerCjdnsNode" class="hidden formSection">
+            <h4 id="infra-registerCjdnsTitle">SHOULD NOT APPEAR</h4>
         
             <div>
                 <label for="infra-nodeName">Name: </label>
@@ -275,52 +275,89 @@
                 <span id="infra-dollarizedValue">Dollarized value: $0.00</span>
                 <span class="validation-err" id="infra-cjdnsYieldCredits-validationErr"></span>
             </div>
+
+            <div id="infra-cjdnsDetails">
+                <label for="infra-cjdnsDetails-">Assigned Yield Credits: </label>
+                <input type="text" id="infra-cjdnsYieldCredits" placeholder="0.00" />
+            </div>
         
             <div>
-                <button id="infra-registerCjdnsButton">Register Cjdns</button>
+                <button id="infra-registerCjdnsButton">SHOULD NOT APPEAR</button>
             </div>
         </div>
 
-        <br/>
-        <div id="infra-updateCjdnsNode" class="hidden">
-            <h4>Modify Cjdns Node <span id="infra-updateCjdnsNodeId"></span></h4>
-        
-            <div>
-                <label for="infra-updNodeName">Name: </label>
-                <input type="text" id="infra-updNodeName" />
-                <span class="validation-err" id="infra-updNodeName-validationErr"></span>
-            </div>
+        <button id="infra-registerDomainButton">New Domain</button>
 
-            <div>
-                <label for="infra-updNodeDomain">Domain:</label>
-                <select id="infra-updNodeDomain">
-                    <option value="0">Loading</option>
+        <div id="infra-registerDomain" class="hidden formSection">
+            <h4 id="infra-registerDomainTitle">SHOULD NOT APPEAR</h4>
+
+            <div id="infra-registerDomainTld">
+                <label for="infra-domainTld">Domain:</label>
+                <select id="infra-domainTld">
+                    <option value="">Loading</option>
                 </select>
             </div>
         
             <div>
-                <label for="infra-updEnableVPN">Enable VPN: </label>
-                <input type="checkbox" id="infra-updEnableVPN" />
+                <label for="infra-resolveDangerous">Resolve dangerous subdomains: </label>
+                <input type="checkbox" id="infra-resolveDangerous" />
             </div>
 
             <div>
-                <label for="infra-updPrivateCjdns">Private Node (non-yielding): </label>
-                <input type="checkbox" id="infra-updPrivateCjdns" />
+                <label for="infra-domainYieldCredits">Assigned Yield Credits: </label>
+                <input type="text" id="infra-domainYieldCredits" placeholder="0.00" />
+                <button id="infra-domainMaxCreditsButton">Max Possible</button>
+                <span id="infra-domainDollarizedValue">Dollarized value: $0.00</span>
+                <span class="validation-err" id="infra-domainYieldCredits-validationErr"></span>
             </div>
         
             <div>
-                <label for="infra-updCjdnsYieldCredits">Assigned Yield Credits: </label>
-                <input type="text" id="infra-updCjdnsYieldCredits" placeholder="0.00"/>
-                <button id="infra-updMaxCreditsButton">Max Possible</button>
-                <span id="infra-updDollarizedValue">Dollarized value: $0.00</span>
-                <span class="validation-err" id="infra-updCjdnsYieldCredits-validationErr"></span>
-            </div>
-        
-            <div>
-                <button id="infra-updateCjdnsButton">Save</button>
+                <button id="infra-registerDomainConfirm">SHOULD NOT APPEAR</button>
             </div>
         </div>
 
+        <button id="infra-cjdnsSimOpen">Cjdns Simulate Yields</button>
+        <div id="infra-cjdnsSim" class="hidden formSelection">
+            <h4>Cjdns Simulate Yields</h4>
+            <label for="infra-cjdnsSimIpv4">IPv4 Address: </label>
+            <input type="text" id="infra-cjdnsSimIpv4" placeholder="3.3.3.3" />
+            <span class="validation-err" id="infra-cjdnsSimIpv4-validationErr"></span>
+            <br/>
+            <label for="infra-cjdnsSimHasIpv6">Node has IPv6: </label>
+            <input type="checkbox" id="infra-cjdnsSimHasIpv6" />
+            <br/>
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Network</th>
+                        <th>Existing Nodes</th>
+                        <th>Bonus Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                    <td>Address Block</td>
+                    <td id="infra-cjdnsSim-addressBlock-network">-</td>
+                    <td id="infra-cjdnsSim-addressBlock-nodes">-</td>
+                    <td id="infra-cjdnsSim-addressBlock-bonus">-</td>
+                    </tr>
+                    <tr>
+                    <td>ISP</td>
+                    <td id="infra-cjdnsSim-isp-network">-</td>
+                    <td id="infra-cjdnsSim-isp-nodes">-</td>
+                    <td id="infra-cjdnsSim-isp-bonus">-</td>
+                    </tr>
+                    <tr>
+                    <td>IPv6 Bonus</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td id="infra-cjdnsSim-ipv6-bonus">-</td>
+                    </tr>
+                </tbody>
+            </table>
+            <span>GEOGRAPHICAL DISTRIBUTION BONUS: <span id="infra-cjdnsSim-totalBonus">-</span></span>
+        </div>
 
     </div>
 </body>

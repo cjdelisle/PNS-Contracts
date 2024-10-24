@@ -131,6 +131,7 @@ $(async () => {
         inf.domainDailyPerMillion.setter((v) => { $('#infra-domainDailyYield').text(v); });
 
         let setNodeId = async (x /*:string*/) => {};
+        let setDomainId = async (x /*:string*/) => {};
 
         inf.unitTable.setter((data) => {
             // Clear the existing table body
@@ -162,9 +163,23 @@ $(async () => {
                 });
                 data.forEach((item) => {
                     $(`#infra-editCjdns-${item.id}`).click(() => {
-                        setNodeId(item.id);
-                        $('#infra-updateCjdnsNodeId').text(item.id);
-                        $('#infra-updateCjdnsNode').removeClass('hidden');
+                        if (item.t == 'Vpn' || item.t.indexOf('Cjdns') > -1) {
+                            setNodeId(item.id);
+                            $('#infra-registerCjdnsTitle').text('Update Cjdns Node ' + item.id);
+                            $('#infra-registerCjdnsButton').text('Save');
+                            $('#infra-cjdnsDetails').removeClass('hidden');
+                            $('.formSection').addClass('hidden'); // Hide everything else
+                            $('#infra-registerCjdnsNode').removeClass('hidden');
+                        } else if (item.t.indexOf('Domain') > -1) {
+                            setDomainId(item.id)
+                            $('#infra-registerDomainTitle').text('Update Domain ' + item.id);
+                            $('#infra-registerDomainConfirm').text('Save');
+                            $('#infra-registerDomainTld').addClass('hidden'); // Do not show TLD when updating
+                            $('.formSection').addClass('hidden'); // Hide everything else
+                            $('#infra-registerDomain').removeClass('hidden');
+                        } else {
+                            throw new Error("Unsupported node type")
+                        }
                     });
                 });
             } else {
@@ -177,12 +192,76 @@ $(async () => {
                 $('#infra-table tbody').append(noDataRow);
             }
         });
+
+        const createDomain = async () => {
+            const dom = await inf.createUpdateDomain();
+
+            $('#infra-registerDomainButton').click(() => {
+                if ($('#infra-registerDomain').hasClass('hidden')) {
+                    dom.setNodeId(null);
+                    $('#infra-registerDomainTitle').text('Create New Domain');
+                    $('#infra-registerDomainConfirm').text('Create');
+                    $('#infra-registerDomainTld').removeClass('hidden'); // Allow selecting TLD when registering
+                    $('.formSection').addClass('hidden'); // Hide everything else
+                    $('#infra-registerDomain').removeClass('hidden');
+                } else {
+                    $('.formSection').addClass('hidden'); // Hide everything
+                }
+            });
+
+            dom.tldOptions.setter((data) => {
+                $('#infra-domainTld').empty();
+                $.each(data, (_value, text) => {
+                    const opt = $('<option></option>');
+                    opt.val(text);
+                    opt.text(text);
+                    $('#infra-domainTld').append(opt);
+                });
+            });
+
+            bindVarToCheckbox(dom.resolveDangerous, $('#infra-resolveDangerous'));
+            bindVarToInput(dom.yieldCredits, $('#infra-domainYieldCredits'));
+            bindVarToSelect(dom.domain, $('#infra-domainTld'));
+
+            $('#infra-domainMaxCreditsButton').click(dom.clickMaxCreditsButton);
+
+            dom.yieldCreditsValidation.setter((msg) => {
+                $('#infra-domainYieldCredits-validationErr').text(msg);
+            });
+            dom.yieldCreditsDollarized.setter((msg) => {
+                $('#infra-domainDollarizedValue').text('$' + msg);
+            });
+
+            dom.createButtonActive.setter((active) => {
+                console.log('dom.createButtonActive', active);
+                if (active) {
+                    $('#infra-registerDomainConfirm').removeAttr('disabled');
+                } else {
+                    $('#infra-registerDomainConfirm').attr('disabled', 'disabled');
+                }
+            });
+
+            $('#infra-registerDomainConfirm').click(() => {
+                (async () => {
+                    $('#spinner').removeClass('hidden');
+                    await dom.createOrUpdate();
+                    $('#spinner').addClass('hidden');
+                })();
+            });
+
+            setDomainId = dom.setNodeId;
+        };
         
         const createCjdns = async () => {
             const cj = await inf.createUpdateCjdns();
 
             $('#infra-registerCjdnsNodeButton').click(() => {
                 if ($('#infra-registerCjdnsNode').hasClass('hidden')) {
+                    cj.setNodeId(null);
+                    $('#infra-registerCjdnsTitle').text('Create New Cjdns');
+                    $('#infra-registerCjdnsButton').text('Create');
+                    $('#infra-cjdnsDetails').addClass('hidden');
+                    $('.formSection').addClass('hidden');
                     $('#infra-registerCjdnsNode').removeClass('hidden');
                 } else {
                     $('#infra-registerCjdnsNode').addClass('hidden');
@@ -232,59 +311,61 @@ $(async () => {
                     $('#spinner').addClass('hidden');
                 })();
             });
-        };
-
-        const updateCjdns = async () => {
-            const cj = await inf.createUpdateCjdns();
-
-            cj.domainOptions.setter((data) => {
-                $('#infra-updNodeDomain').empty();
-                $.each(data, (value, text) => {
-                    const opt = $('<option></option>');
-                    opt.val(value);
-                    opt.text(text);
-                    $('#infra-updNodeDomain').append(opt);
-                });
-            });
-
-            cj.createButtonActive.setter((active) => {
-                if (active) {
-                    $('#infra-updateCjdnsButton').removeAttr('disabled');
-                } else {
-                    $('#infra-updateCjdnsButton').attr('disabled', 'disabled');
-                }
-            });
-
-            cj.nodeNameValidation.setter((msg) => {
-                $('#infra-updNodeName-validationErr').text(msg);
-            });
-            cj.yieldCreditsValidation.setter((msg) => {
-                $('#infra-updCjdnsYieldCredits-validationErr').text(msg);
-            });
-            cj.yieldCreditsDollarized.setter((msg) => {
-                $('#infra-updDollarizedValue').text('$' + msg);
-            });
-
-            bindVarToInput(cj.yieldCredits, $('#infra-updCjdnsYieldCredits'));
-            bindVarToInput(cj.name, $('#infra-updNodeName'));        
-            bindVarToSelect(cj.domain, $('#infra-updNodeDomain'));
-            $('#infra-updMaxCreditsButton').click(cj.clickMaxCreditsButton);
-            bindVarToCheckbox(cj.enableVPN, $('#infra-updEnableVPN'));
-            bindVarToCheckbox(cj.privateNode, $('#infra-updPrivateCjdns'));
-
-            $('#infra-updateCjdnsButton').click(() => {
-                (async () => {
-                    $('#spinner').removeClass('hidden');
-                    await cj.createOrUpdate();
-                    $('#spinner').addClass('hidden');
-                })();
-            });
 
             setNodeId = cj.setNodeId;
         };
 
+        const simCjdns = async () => {
+            const cj = await inf.infraCjdnsSim();
+
+            $('#infra-cjdnsSimOpen').click(() => {
+                if ($('#infra-cjdnsSim').hasClass('hidden')) {
+                    $('.formSection').addClass('hidden');
+                    $('#infra-cjdnsSim').removeClass('hidden');
+                } else {
+                    $('#infra-cjdnsSim').addClass('hidden');
+                }
+            });
+
+            bindVarToInput(cj.ipv4Address, $('#infra-cjdnsSimIpv4'));
+            bindVarToCheckbox(cj.hasIpv6, $('#infra-cjdnsSimHasIpv6'));
+
+            cj.ipv4AddressValidationError.setter((msg) => {
+                $('#infra-cjdnsSimIpv4-validationErr').text(msg);
+            });
+
+            cj.addressBlockNetwork.setter((msg) => {
+                $('#infra-cjdnsSim-addressBlock-network').text(msg);
+            });
+            cj.addressBlockNodes.setter((msg) => {
+                $('#infra-cjdnsSim-addressBlock-nodes').text(msg);
+            });
+            cj.addressBlockBonus.setter((msg) => {
+                $('#infra-cjdnsSim-addressBlock-bonus').text(msg);
+            });
+
+            cj.ispNetwork.setter((msg) => {
+                $('#infra-cjdnsSim-isp-network').text(msg);
+            });
+            cj.ispNodes.setter((msg) => {
+                $('#infra-cjdnsSim-isp-nodes').text(msg);
+            });
+            cj.ispBonus.setter((msg) => {
+                $('#infra-cjdnsSim-isp-bonus').text(msg);
+            });
+
+            cj.ipv6Bonus.setter((msg) => {
+                $('#infra-cjdnsSim-ipv6-bonus').text(msg);
+            });
+
+            cj.totalBonus.setter((msg) => {
+                $('#infra-cjdnsSim-totalBonus').text(msg);
+            })
+        };
+
         createCjdns();
-        updateCjdns();
+        createDomain();
+        simCjdns();
     };
 
     window.pns.showTab = (tab) => {
