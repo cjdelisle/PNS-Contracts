@@ -304,6 +304,77 @@ $(async () => {
             bindVarToCheckbox(cj.enableVPN, $('#infra-enableVPN'));
             bindVarToCheckbox(cj.privateNode, $('#infra-privateCjdns'));
 
+            cj.nodeStatus.setter((msg) => {
+                $('#infra-cjdnsDetails-nodeStatus').val(msg);
+            });
+            cj.publicIpv4.setter((msg) => {
+                $('#infra-cjdnsDetails-publicIpv4').val(msg);
+            });
+            cj.peerId.setter((msg) => {
+                $('#infra-cjdnsDetails-peerId').val(msg);
+            });
+
+            cj.addressBlockNetwork.setter((msg) => {
+                $('#infra-cjdnsDetails-addressBlock-network').text(msg);
+            });
+            cj.addressBlockNodes.setter((msg) => {
+                $('#infra-cjdnsDetails-addressBlock-nodes').text(msg);
+            });
+            cj.addressBlockBonus.setter((msg) => {
+                $('#infra-cjdnsDetails-addressBlock-bonus').text(msg);
+            });
+
+            cj.ispNetwork.setter((msg) => {
+                $('#infra-cjdnsDetails-isp-network').text(msg);
+            });
+            cj.ispNodes.setter((msg) => {
+                $('#infra-cjdnsDetails-isp-nodes').text(msg);
+            });
+            cj.ispBonus.setter((msg) => {
+                $('#infra-cjdnsDetails-isp-bonus').text(msg);
+            });
+
+            cj.ipv6Bonus.setter((msg) => {
+                $('#infra-cjdnsDetails-ipv6-bonus').text(msg);
+            });
+
+            cj.totalBonus.setter((msg) => {
+                $('#infra-cjdnsDetails-totalBonus').text(msg);
+            });
+
+            cj.reliabilityPercent.setter((percent) => {
+                $("#infra-cjdnsDetails-progress-bar").css("width", percent + "%");
+                $("#infra-cjdnsDetails-downtime").text((100 - percent) + "%");
+            });
+            cj.downtimePenalty.setter((msg) => {
+                $('#infra-cjdnsDetails-penalty').text(msg);
+                $("#infra-cjdnsDetails-downtimePenalty").text(msg);
+            });
+            cj.effectiveYieldCredits.setter((msg) => {
+                $("#infra-cjdnsDetails-effectiveYieldCredits").text(msg);
+            });
+            cj.yieldPerMillionCredits.setter((msg) => {
+                $("#infra-cjdnsDetails-yieldPerMillionCredits").text(msg);
+            });
+            cj.currentDailyYieldDollarized.setter((msg) => {
+                $("#infra-cjdnsDetails-currentDailyYieldDollarized").text(msg);
+            });
+            cj.currentDailyYield.setter((msg) => {
+                $("#infra-cjdnsDetails-currentDailyYield").val(msg);
+            });
+            cj.setupNodeUrl.setter((url) => {
+                $('#infra-cjdnsDetails-setupNodeUrl').attr('href', url);
+            });
+            cj.nodeIsSetup.setter((isIt) => {
+                if (isIt) {
+                    $('#infra-cjdnsDetailsNotSetup').addClass('hidden');
+                    $('#infra-cjdnsDetailsOperational').removeClass('hidden');
+                } else {
+                    $('#infra-cjdnsDetailsNotSetup').removeClass('hidden');
+                    $('#infra-cjdnsDetailsOperational').addClass('hidden');
+                }
+            });
+
             $('#infra-registerCjdnsButton').click(() => {
                 (async () => {
                     $('#spinner').removeClass('hidden');

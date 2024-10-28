@@ -277,8 +277,75 @@
             </div>
 
             <div id="infra-cjdnsDetails">
-                <label for="infra-cjdnsDetails-">Assigned Yield Credits: </label>
-                <input type="text" id="infra-cjdnsYieldCredits" placeholder="0.00" />
+                <label for="infra-cjdnsDetails-nodeStatus">Node Status: </label>
+                <input type="text" id="infra-cjdnsDetails-nodeStatus" placeholder="-" readonly />
+                <br/>
+                <label for="infra-cjdnsDetails-publicIpv4">Public IPv4: </label>
+                <input type="text" id="infra-cjdnsDetails-publicIpv4" placeholder="-" readonly />
+                <br/>
+                <label for="infra-cjdnsDetails-peerId">Peer ID: </label>
+                <input type="text" id="infra-cjdnsDetails-peerId" placeholder="-" readonly />
+                <br/>
+                <div id="infra-cjdnsDetailsOperational">
+                    <table border="1">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Network</th>
+                                <th>Existing Nodes</th>
+                                <th>Bonus Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                            <td>Address Block</td>
+                            <td id="infra-cjdnsDetails-addressBlock-network">-</td>
+                            <td id="infra-cjdnsDetails-addressBlock-nodes">-</td>
+                            <td id="infra-cjdnsDetails-addressBlock-bonus">-</td>
+                            </tr>
+                            <tr>
+                            <td>ISP</td>
+                            <td id="infra-cjdnsDetails-isp-network">-</td>
+                            <td id="infra-cjdnsDetails-isp-nodes">-</td>
+                            <td id="infra-cjdnsDetails-isp-bonus">-</td>
+                            </tr>
+                            <tr>
+                            <td>IPv6 Bonus</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td id="infra-cjdnsDetails-ipv6-bonus">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <span>GEOGRAPHICAL DISTRIBUTION BONUS: <span id="infra-cjdnsDetails-totalBonus">-</span></span>
+
+                    <br/>
+                    Reliability
+                    <div id="infra-cjdnsDetails-progress-container" style="width: 100%; background-color: #f3f3f3; border-radius: 5px;">
+                        <div id="infra-cjdnsDetails-progress-bar" style="width: 0%; height: 25px; background-color: #4caf50; border-radius: 5px;"></div>
+                    </div>
+                    <span><span id="infra-cjdnsDetails-downtime">0%</span> downtime -> <span id="infra-cjdnsDetails-penalty">Loading</span> penalty.</span>
+                    <br/>
+                    <span>DOWNTIME PENALTY: <span id="infra-cjdnsDetails-downtimePenalty">-</span></span>
+                    <br/>
+                    <hr/>
+                    <br/>
+                    <span>EFFECTIVE YIELD CREDITS: <span id="infra-cjdnsDetails-effectiveYieldCredits">-</span></span>
+                    <br/>
+                    <span>CURRENT YIELD PER MILLION CREDITS: <span id="infra-cjdnsDetails-yieldPerMillionCredits">-</span> PKT</span>
+                    <br/>
+                    <br/>
+                    <span>CURRENT DAILY YIELD: $<span id="infra-cjdnsDetails-currentDailyYieldDollarized">-</span></span>
+                    <br/>
+                    <input type="text" id="infra-cjdnsDetails-currentDailyYield" placeholder="-" readonly />
+                    
+                    <span>
+                </div>
+                <div id="infra-cjdnsDetailsNotSetup">
+                    YOU MUST INSTALL YOUR NODE TO BEGIN YIELDING
+                    <br/>
+                    <a id="infra-cjdnsDetails-setupNodeUrl" href="#">Node Setup Instructions</a>
+                </div>
             </div>
         
             <div>

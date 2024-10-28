@@ -154,6 +154,28 @@ export type CjdnsUpdateOrCreate_t = {|
     privateNode: Var_t<boolean>,
     createOrUpdate: () => Promise<void|null>,
     setNodeId: (?string) => Promise<void>,
+    nodeStatus: Var_t<string>,
+    publicIpv4: Var_t<string>,
+    peerId: Var_t<string>,
+
+    addressBlockNodes: Var_t<string>,
+    addressBlockBonus: Var_t<string>,
+    addressBlockNetwork: Var_t<string>,
+    ispNetwork: Var_t<string>,
+    ispNodes: Var_t<string>,
+    ispBonus: Var_t<string>,
+    ipv6Bonus: Var_t<string>,
+    totalBonus: Var_t<string>,
+
+    reliabilityPercent: Var_t<number>,
+    downtimePenalty: Var_t<string>,
+    effectiveYieldCredits: Var_t<string>,
+    yieldPerMillionCredits: Var_t<string>,
+    currentDailyYieldDollarized: Var_t<string>,
+    currentDailyYield: Var_t<string>,
+
+    setupNodeUrl: Var_t<string>,
+    nodeIsSetup: Var_t<boolean>,
 |};
 export type Infra_t = {|
     assignedYc: Var_t<string>,
@@ -176,6 +198,7 @@ export type PnsConstructor_t = (any) => Promise<Pns_t>;
 
 const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
     const API_SERVER = 'https://app.pkt.cash/beta/api/v1';
+    const CJDNS_HOWTO = 'https://docs.pkt.cash/infra/cjdns-node/';
 
     let self_myAddress;
     let self_pnsContract;
@@ -435,6 +458,31 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
         const enableVPN = await mkVar("infra.createCjdns.enableVPN", withDefault(false), [createButtonActive]);
         const privateNode = await mkVar("infra.createCjdns.privateNode", withDefault(false), [createButtonActive]);
 
+        const nodeStatus = await mkVar("infra.createCjdns.nodeStatus", withDefault(''));
+        const publicIpv4 = await mkVar("infra.createCjdns.publicIpv4", withDefault(''));
+        const peerId = await mkVar("infra.createCjdns.peerId", withDefault(''));
+
+        const addressBlockNodes = await mkVar("infra.createCjdns.addressBlockNodes", withDefault('-'));
+        const addressBlockBonus = await mkVar("infra.createCjdns.addressBlockBonus", withDefault('-'));
+        const addressBlockNetwork = await mkVar("infra.createCjdns.addressBlockNetwork", withDefault('-'));
+        
+        const ispNetwork = await mkVar("infra.createCjdns.ispNetwork", withDefault('-'));
+        const ispNodes = await mkVar("infra.createCjdns.ispNodes", withDefault('-'));
+        const ispBonus = await mkVar("infra.createCjdns.ispBonus", withDefault('-'));
+        
+        const ipv6Bonus = await mkVar("infra.createCjdns.ipv6Bonus", withDefault('-'));
+        
+        const totalBonus = await mkVar("infra.createCjdns.totalBonus", withDefault('-'));
+
+        const reliabilityPercent = await mkVar("infra.createCjdns.reliabilityPercent", withDefault(0));
+        const downtimePenalty = await mkVar("infra.createCjdns.downtimePenalty", withDefault('-'));
+        const effectiveYieldCredits = await mkVar("infra.createCjdns.effectiveYieldCredits", withDefault('-'));
+        const yieldPerMillionCredits = await mkVar("infra.createCjdns.yieldPerMillionCredits", withDefault('-'));
+        const currentDailyYieldDollarized = await mkVar("infra.createCjdns.currentDailyYieldDollarized", withDefault('-'));
+        const currentDailyYield = await mkVar("infra.createCjdns.currentDailyYield", withDefault('-'));
+        const setupNodeUrl = await mkVar("infra.createCjdns.setupNodeUrl", withDefault(CJDNS_HOWTO));
+        const nodeIsSetup = await mkVar("infra.createCjdns.nodeIsSetup", withDefault(false));
+
         const yc = await yieldCredits(
             'infra.createCjdns',
             dataProv,
@@ -482,6 +530,23 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
 
         const setNodeId = async (id /*:?string*/) => {
             nodeId = id;
+
+            addressBlockNodes.updateAndSet('-');
+            addressBlockBonus.updateAndSet('-');
+            addressBlockNetwork.updateAndSet('-');
+            ispNetwork.updateAndSet('-');
+            ispNodes.updateAndSet('-');
+            ispBonus.updateAndSet('-');
+            ipv6Bonus.updateAndSet('-');
+            totalBonus.updateAndSet('-');
+
+            reliabilityPercent.updateAndSet(0);
+            downtimePenalty.updateAndSet('-');
+            effectiveYieldCredits.updateAndSet('-');
+            yieldPerMillionCredits.updateAndSet('-');
+            currentDailyYieldDollarized.updateAndSet('-');
+            currentDailyYield.updateAndSet('-');
+
             if (id) {
                 const data = dataProv.get();
                 const unit = data.units.find((u)=>u.id === nodeId);
@@ -497,6 +562,42 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
                 privateNode.makeDefault();
                 yc.yieldCredits.makeDefault();
                 createButtonActive.updateAndSet();
+
+                nodeStatus.updateAndSet('');
+                publicIpv4.updateAndSet('');
+                peerId.updateAndSet('');
+
+                errorHandled('infra.createCjdns.setNodeId.fetch', async () => {
+                    const r = await fetch(`${API_SERVER}/infra/cjdns/${id}`);
+                    const res /*:InfraCjdnsStatus_t*/ = await r.json();
+                    nodeStatus.updateAndSet(res.node_status);
+                    if (res.operational_status) {
+                        const resp = res.operational_status;
+                        publicIpv4.updateAndSet(resp.ipv4);
+
+                        addressBlockNodes.updateAndSet(resp.bonus.ip_block_nodes.toString());
+                        addressBlockBonus.updateAndSet(percent(resp.bonus.ip_block_bonus));
+                        addressBlockNetwork.updateAndSet(resp.bonus.ip_block);
+                        ispNetwork.updateAndSet(resp.bonus.asn);
+                        ispNodes.updateAndSet(resp.bonus.asn_nodes.toString());
+                        ispBonus.updateAndSet(percent(resp.bonus.asn_bonus));
+                        ipv6Bonus.updateAndSet(resp.bonus.ipv6_bonus ? percent(resp.bonus.ipv6_bonus) : '-');
+                        totalBonus.updateAndSet((resp.bonus.total_bonus > 0 ? '+' : '') + percent(resp.bonus.total_bonus));
+
+                        reliabilityPercent.updateAndSet(Math.floor(resp.uptime * 100));
+                        downtimePenalty.updateAndSet(Math.floor(resp.downtime_penalty * 100) + '%');
+                        effectiveYieldCredits.updateAndSet(renderPKT(resp.effective_yield_credits));
+                        yieldPerMillionCredits.updateAndSet(renderPKT(dataProv.get().daily_per_million_cjdns));
+                        currentDailyYieldDollarized.updateAndSet(renderPKT(resp.daily_yield_dollarized));
+                        currentDailyYield.updateAndSet(renderPKT(resp.daily_yield)); 
+                        nodeIsSetup.updateAndSet(true);           
+                    } else {
+                        publicIpv4.updateAndSet('NOT FOUND');
+                        nodeIsSetup.updateAndSet(false);
+                    }
+                    peerId.updateAndSet(res.peer_id);
+                    setupNodeUrl.updateAndSet(CJDNS_HOWTO + '?peer_id=' + res.peer_id);
+                })();
             } else {
                 await name.updateAndSet('');
                 await domain.updateAndSet('0x0') // TODO
@@ -554,7 +655,28 @@ const PNS /*:PnsConstructor_t*/ = window.PNS = (() => {
             privateNode,
             createOrUpdate,
             setNodeId,
-        })
+            nodeStatus,
+            publicIpv4,
+            peerId,
+
+            addressBlockNodes,           // Var_t<string>
+            addressBlockBonus,           // Var_t<string>
+            addressBlockNetwork,         // Var_t<string>
+            ispNetwork,                  // Var_t<string>
+            ispNodes,                    // Var_t<string>
+            ispBonus,                    // Var_t<string>
+            ipv6Bonus,                   // Var_t<string>
+            totalBonus,                   // Var_t<string>
+
+            reliabilityPercent,
+            downtimePenalty,
+            effectiveYieldCredits,
+            yieldPerMillionCredits,
+            currentDailyYieldDollarized,
+            currentDailyYield,
+            setupNodeUrl,
+            nodeIsSetup,
+        });
     };
 
     const infraCreateDomain = async (
