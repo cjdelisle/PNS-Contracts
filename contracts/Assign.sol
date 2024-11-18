@@ -125,6 +125,11 @@ contract Assign is IAssign, Ownable {
         assignYc(unitId, yieldCredits);
     }
 
+    function deleteUnit(uint unitId) external override {
+        self_infra.deleteUnit(unitId, msg.sender);
+        assignYc(unitId, 0);
+    }
+
     function nextId() external override view returns (uint) {
         return self_ids.nextId;
     }

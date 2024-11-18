@@ -61,6 +61,8 @@ interface IAssign {
         uint yieldCredits
     ) external;
 
+    function deleteUnit(uint unitId) external;
+
     /// @return The next higher Assign id to issue
     function nextId() external view returns (uint);
 
