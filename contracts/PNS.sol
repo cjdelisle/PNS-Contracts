@@ -5,24 +5,18 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./external/ILockBox.sol";
 import "./interface/IPNS.sol";
+import "./interface/IDomainPricer.sol";
 import "./libraries/IdProvider.sol";
-
-import "hardhat/console.sol";
 
 contract PNS is Ownable, IPNS {
     using IdProvider for IdProvider.Ids;
 
-    // Constants
-
     /// How long a preregistration survives for, before it is invalidated
     uint64 public constant PREREG_LIFETIME_SECONDS = 60*60*24;
 
-    // Public fields
 
     /// The lockbox of which the lockup holder is the owner and controller of the domain.
-    ILockBox public immutable lockboxContract;
-
-    // Private fields
+    ILockBox private self_lockboxContract;
 
     /// An ID provider which reuses IDs when possible
     IdProvider.Ids private self_ids;
@@ -30,11 +24,11 @@ contract PNS is Ownable, IPNS {
     /// Time of the last domain preregistration
     uint64 private self_lastRegTimeSec;
 
-    /// Halving period of the domain price
-    uint64 private self_priceHalvingPeriodSeconds = 60*60;
+    /// Price of the previous registration
+    uint256 private self_lastRegPrice = 1;
 
-    /// Price of the next registration (if registered at exactly the same time as the last)
-    uint256 private self_nextRegPrice = 1;
+    /// Pricer for domains
+    IDomainPricer private self_pricer;
 
     /// A mapping of domains by ID
     mapping(uint64 => Domain) private self_domainById;
@@ -70,28 +64,16 @@ contract PNS is Ownable, IPNS {
 
     /// @param _lockboxContract The contract of the PKT LockBox
     /// @param _whitelistActive True if a registration whitelist should be set as active now.
-    constructor(ILockBox _lockboxContract, bool _whitelistActive) Ownable(msg.sender) {
-        lockboxContract = _lockboxContract;
+    constructor(ILockBox _lockboxContract, bool _whitelistActive, address pricer) Ownable(msg.sender) {
+        self_lockboxContract = _lockboxContract;
         self_registrationWhitelistActive = _whitelistActive;
         self_admin = msg.sender;
         self_ids.init();
+        self_pricer = IDomainPricer(pricer);
     }
 
-    function currentMinLockup() public override view returns (uint256 price) {
-        uint64 partialTime;
-        uint64 halvingSeconds = self_priceHalvingPeriodSeconds;
-        {
-            uint64 secondsSinceLast = uint64(block.timestamp) - self_lastRegTimeSec;
-            partialTime = secondsSinceLast % halvingSeconds;
-            price = self_nextRegPrice >> (secondsSinceLast / halvingSeconds);
-        }
-        if (partialTime > 0) {
-            // Price ranges from 1/2 to 1 linearly with the ratio of partialTime : halvingSeconds
-            price = price / 2 + price * partialTime / halvingSeconds / 2;
-        }
-        if (price == 0) {
-            price = 1;
-        }
+    function currentMinLockup() external view override returns (uint256 price) {
+        return self_pricer.getPrice(self_lastRegPrice, self_lastRegTimeSec);
     }
 
     function getLockupValuation(uint256 lockupId) public override view returns (uint256) {
@@ -104,7 +86,7 @@ contract PNS is Ownable, IPNS {
             ,
             ,
             ,
-        ) = lockboxContract.lockups(lockupId);
+        ) = self_lockboxContract.lockups(lockupId);
         return amountAsset + lpTokenValuation;
     }
 
@@ -124,9 +106,9 @@ contract PNS is Ownable, IPNS {
         }
         {
             uint256 value = getLockupValuation(lockupId);
-            require(value >= currentMinLockup(), "Lockup does not have enough value of assets");
+            require(value >= getUpdateCurrentMinLockup(), "Lockup does not have enough value of assets");
             self_lastRegTimeSec = uint64(block.timestamp);
-            self_nextRegPrice = value * 2;
+            self_lastRegPrice = value;
         }
         {
             Prereg storage pr = self_preregs[nameHash];
@@ -228,9 +210,9 @@ contract PNS is Ownable, IPNS {
     ) external override {
         {
             uint256 value = getLockupValuation(newLockupId);
-            require(value >= currentMinLockup(), "Lockup does not have enough value of assets");
+            require(value >= getUpdateCurrentMinLockup(), "Lockup does not have enough value of assets");
             self_lastRegTimeSec = uint64(block.timestamp);
-            self_nextRegPrice = value * 2;
+            self_lastRegPrice = value;
         }
         {
             Domain storage dom = self_domainById[id];
@@ -321,6 +303,11 @@ contract PNS is Ownable, IPNS {
 
     // View functions
 
+    /// The lockbox of which the lockup holder is the owner and controller of the domain.
+    function lockboxContract() external override view returns (ILockBox) {
+        return self_lockboxContract;
+    }
+
     function nextDomainId() external override view returns (uint) {
         return self_ids.nextId;
     }
@@ -359,14 +346,14 @@ contract PNS is Ownable, IPNS {
         return self_domainByFQDN[fqdn];
     }
 
-    function getMinLockupInfo() external override view returns (
+    function getPricingInfo() external override view returns (
+        address pricer,
         uint64 lastRegTime,
-        uint64 priceHalvingPeriodSeconds,
-        uint256 nextMinLockup
+        uint256 lastRegPrice
     ) {
+        pricer = address(self_pricer);
         lastRegTime = self_lastRegTimeSec;
-        priceHalvingPeriodSeconds = self_priceHalvingPeriodSeconds;
-        nextMinLockup = self_nextRegPrice;
+        lastRegPrice = self_lastRegPrice;
     }
 
     function getPrereg(bytes32 nameHash) external override view returns (
@@ -396,9 +383,14 @@ contract PNS is Ownable, IPNS {
         self_admin = admin;
     }
 
-    function setPriceHalvingSeconds(uint64 halvingSeconds) external override {
+    function setPricer(address pricer) external override {
         require(msg.sender == self_admin, "Admin only");
-        self_priceHalvingPeriodSeconds = halvingSeconds;
+        self_pricer = IDomainPricer(pricer);
+    }
+
+    function setLockbox(address lbox) external override {
+        require(msg.sender == self_admin, "Admin only");
+        self_lockboxContract = ILockBox(lbox);
     }
 
     function updateRegistrationWhitelist(AllowedAddress[] calldata allowed, bool activate) external override {
@@ -424,17 +416,21 @@ contract PNS is Ownable, IPNS {
     // Private
 
     function _isAuthorizedForLockup(address who, uint64 lockupId) private view returns (bool) {
-        address owner = lockboxContract.ownerOf(lockupId);
+        address owner = self_lockboxContract.ownerOf(lockupId);
         if (owner == who) {
             return true;
         }
-        if (lockboxContract.getApproved(lockupId) == who) {
+        if (self_lockboxContract.getApproved(lockupId) == who) {
             return true;
         }
-        return lockboxContract.isApprovedForAll(owner, who);
+        return self_lockboxContract.isApprovedForAll(owner, who);
     }
 
     function _checkAuthorizedForLockup(address who, uint64 lockupId) private view {
         require(_isAuthorizedForLockup(who, lockupId), "Unauthorized");
+    }
+
+    function getUpdateCurrentMinLockup() private returns (uint256 price) {
+        return self_pricer.getUpdatePrice(self_lastRegPrice, self_lastRegTimeSec);
     }
 }

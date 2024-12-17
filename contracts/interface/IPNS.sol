@@ -298,14 +298,13 @@ interface IPNS {
     /// Get the internal info about the minimum lockup value needed for registering a domain.
     /// Normally you should use currentMinLockup() but this will give you the internal state.
     /// 
+    /// @return pricer The tool for determining the current cost (min lockup) of a domain
     /// @return lastRegTime Time of last domain registration (seconds since the epoch)
-    /// @return priceHalvingPeriodSeconds How many seconds it takes for the price to halve.
-    /// @return nextMinLockup The required lockup value if another domain were to be registered
-    ///                       at the same time as lastRegTime.
-    function getMinLockupInfo() external view returns (
+    /// @return lastRegPrice The lockup value from the most recently registered domain.
+    function getPricingInfo() external view returns (
+        address pricer,
         uint64 lastRegTime,
-        uint64 priceHalvingPeriodSeconds,
-        uint256 nextMinLockup
+        uint256 lastRegPrice
     );
 
     /// Get the internal state of the pre-registration table. Normally you should not need this.
@@ -336,7 +335,10 @@ interface IPNS {
     function setAdmin(address admin) external;
 
     /// Set the price halving time (admin only)
-    function setPriceHalvingSeconds(uint64 halvingSeconds) external;
+    function setPricer(address pricer) external;
+
+    /// Change the effective lockbox (for upgradability)
+    function setLockbox(address lbox) external;
 
     /// A struct for adding and removing addresses from the whitelist
     struct AllowedAddress {

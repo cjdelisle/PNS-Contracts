@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "@openzeppelin/contracts/interfaces/IERC721.sol";
 
 import "./interface/IAssign.sol";
 
@@ -33,6 +34,15 @@ contract Multipay {
                 regs[i].yieldCredits,
                 regs[i].to
             );
+        }
+    }
+    struct NftSend {
+        address recipient;
+        uint256 nftId;
+    }
+    function nftSend(IERC721 nftContract, address from, NftSend[] calldata sends) public {
+        for (uint i = 0; i < sends.length; i++) {
+            nftContract.safeTransferFrom(from, sends[i].recipient, sends[i].nftId);
         }
     }
 }

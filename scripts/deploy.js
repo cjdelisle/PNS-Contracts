@@ -6,11 +6,12 @@ const LOCKBOX_CONTRACT = '0x14D15765c66e8f0C7f8757d1D19137B714dfCC60';
 const LP_PKT_WETH = '0x6183e613dda1fa146c90be6e1757aef15bacad9d';
 const LP_USDC_WETH = '0x88A43bbDF9D098eEC7bCEda4e2494615dfD9bB9C';
 
-let pnsAddress = '0xDd0c3FE1a3cac20209e808FB2dB61D15ABB5b6dD';
+let dpAddress = '0xf7e40e5740B8F42f5d8f8EB18D8B0d526E5e83BB';
+let pnsAddress = '0xDc8eb1D1052a2078B33dd188201eAf3F080E0258';
 let infraAddress = '0xFDc0c296A6DafBA5D43af49ffC08741d197B7485';
 let oracleAddress = '0x7D02D9791a8436481F35C078249Fc9DBfde6021c';
 let assignAddress = '0x79B322f41A4A262f06cEE3d6a581574fF4F5322c';
-let multipayAddress = '0x17023a397E995a3535808c9dbddD8A22d791a090';
+let multipayAddress = '0xCB1a92D92F5186361D7554dea3815d7aE1583699';
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -18,17 +19,30 @@ async function main() {
 
   // Check balance first
   const deployerBalance = await ethers.provider.getBalance(deployer.address);
-  console.log(`Deployer has ${web3.utils.fromWei(deployerBalance.toString())} ETH`)
+  console.log(`Deployer has ${web3.utils.fromWei(deployerBalance.toString())} ETH`);
+
+  // Domain Pricer
+  if (!dpAddress) {
+    const dp = await ethers.deployContract('DomainPricer', []);
+    await dp.waitForDeployment();
+    console.log("Uploading DomainPricer for verification");
+    dpAddress = await dp.getAddress();
+    await run('verify', {
+      address: dpAddress,
+      constructorArgsParams: [],
+    });
+  }
+  console.log(`DP address : ${dpAddress}`);
 
   // PNS
   if (!pnsAddress) {
-    const pns = await ethers.deployContract('PNS', [LOCKBOX_CONTRACT, true]);
+    const pns = await ethers.deployContract('PNS', [LOCKBOX_CONTRACT, true, dpAddress]);
     await pns.waitForDeployment();
-    console.log("Uploading PNS for verification");
     pnsAddress = await pns.getAddress();
+    console.log(`Uploading PNS ${pnsAddress} for verification`);
     await run('verify', {
       address: pnsAddress,
-      constructorArgsParams: [LOCKBOX_CONTRACT, 'true'],
+      constructorArgsParams: [LOCKBOX_CONTRACT, 'true', dpAddress],
     });
   }
   console.log(`PNS address : ${pnsAddress}`);
